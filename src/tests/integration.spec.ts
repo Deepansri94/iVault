@@ -376,6 +376,17 @@ describe('iVault Pro Full-Flow Integration Tests', () => {
     expect(plainParsed).not.toBeNull();
     expect(plainParsed?.vpa).toEqual('deepan@okicici');
     expect(plainParsed?.name).toEqual('deepan');
+
+    // Merchant QR code with category code and merchant parameters
+    const merchantQr = 'upi://pay?pa=store@okbizaxis&pn=SuperMarket&mc=5411&mode=02&orgid=159003&am=520.00&cu=INR';
+    const merchantParsed = parseUpiString(merchantQr);
+    expect(merchantParsed).not.toBeNull();
+    expect(merchantParsed?.vpa).toEqual('store@okbizaxis');
+    expect(merchantParsed?.name).toEqual('SuperMarket');
+    expect(merchantParsed?.amount).toEqual(520);
+    expect(merchantParsed?.merchantParams?.mc).toEqual('5411');
+    expect(merchantParsed?.merchantParams?.mode).toEqual('02');
+    expect(merchantParsed?.merchantParams?.orgid).toEqual('159003');
   });
 });
 

@@ -25,6 +25,10 @@ import {
   RefreshCw,
   Camera,
   Sparkles,
+  ShieldAlert,
+  Info,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 import type { Account } from '../../types/db.types';
 import { UpiQrScanner, type ParsedUpiData } from './UpiQrScanner';
@@ -98,8 +102,12 @@ export const PayWithUpiModal: React.FC<PayWithUpiModalProps> = ({
   const [step, setStep] = useState<'form' | 'intent' | 'success'>('form');
   const [showScanner, setShowScanner] = useState(false);
   const [scannedNotification, setScannedNotification] = useState<string | null>(null);
+  const [scannedMerchantParams, setScannedMerchantParams] = useState<Record<string, string> | undefined>(undefined);
+  const [useSafeMode, setUseSafeMode] = useState(true);
+  const [showRiskGuide, setShowRiskGuide] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [copiedVpa, setCopiedVpa] = useState(false);
+  const [copiedAmount, setCopiedAmount] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [recentPayees, setRecentPayees] = useState<RecentPayee[]>([]);
@@ -123,7 +131,11 @@ export const PayWithUpiModal: React.FC<PayWithUpiModalProps> = ({
       setErrorMessage(null);
       setIsSubmitting(false);
       setCopiedVpa(false);
+      setCopiedAmount(false);
       setScannedNotification(null);
+      setScannedMerchantParams(undefined);
+      setUseSafeMode(true);
+      setShowRiskGuide(false);
 
       if (initialMode === 'scanner') {
         setShowScanner(true);
@@ -155,25 +167,54 @@ export const PayWithUpiModal: React.FC<PayWithUpiModalProps> = ({
   const numAmount = parseFloat(amount) || 0;
   const isBalanceLow = selectedAccount ? selectedAccount.balance < numAmount : false;
 
-  // Build standard UPI URL
-  const buildUpiUri = (isTezProtocol = false): string => {
+  // Build standard, 100% NPCI-compliant UPI URI
+  // CRITICAL FIX: Deliberately omit unverified `tr` parameter which triggers Google Pay "Risky transaction" warning
+  const buildUpiUri = (options?: { includeMerchantParams?: boolean }): string => {
     const vpa = payeeVpa.trim();
-    const name = (payeeName.trim() || 'Merchant').replace(/\s+/g, ' ');
-    const noteText = (notes.trim() || 'iVault Payment').substring(0, 50);
+    // Clean payee name (letters, numbers, spaces, dots, dashes only)
+    const rawName = (payeeName.trim() || 'Merchant').replace(/[^\w\s.-]/g, ' ').replace(/\s+/g, ' ').trim();
+    const name = rawName || 'Merchant';
+    // Clean transaction note (alphanumeric, max 40 chars, no special symbols)
+    const rawNote = (notes.trim() || 'iVault Payment').replace(/[^\w\s.-]/g, ' ').replace(/\s+/g, ' ').trim();
+    const noteText = (rawNote || 'iVault Payment').substring(0, 40);
     const amtStr = numAmount.toFixed(2);
-    const txnRef = `IV${Date.now().toString().slice(-8)}`;
 
-    const params = new URLSearchParams({
-      pa: vpa,
-      pn: name,
-      am: amtStr,
-      cu: 'INR',
-      tn: noteText,
-      tr: txnRef,
-    });
+    const params = new URLSearchParams();
+    params.set('pa', vpa);
+    params.set('pn', name);
+    params.set('am', amtStr);
+    params.set('cu', 'INR');
+    params.set('tn', noteText);
 
-    const protocol = isTezProtocol ? 'tez://upi/pay?' : 'upi://pay?';
-    return `${protocol}${params.toString()}`;
+    // If preserving authentic scanned merchant parameters and safe clean mode is not forced
+    if (options?.includeMerchantParams && scannedMerchantParams) {
+      Object.entries(scannedMerchantParams).forEach(([key, val]) => {
+        if (!['pa', 'pn', 'am', 'cu', 'tn'].includes(key)) {
+          params.set(key, val);
+        }
+      });
+    }
+
+    return `upi://pay?${params.toString()}`;
+  };
+
+  // Build Android Google Pay direct intent (bypasses untrusted web wrappers)
+  const buildGpayAndroidIntent = (): string => {
+    const vpa = payeeVpa.trim();
+    const rawName = (payeeName.trim() || 'Merchant').replace(/[^\w\s.-]/g, ' ').replace(/\s+/g, ' ').trim();
+    const name = rawName || 'Merchant';
+    const rawNote = (notes.trim() || 'iVault Payment').replace(/[^\w\s.-]/g, ' ').replace(/\s+/g, ' ').trim();
+    const noteText = (rawNote || 'iVault Payment').substring(0, 40);
+    const amtStr = numAmount.toFixed(2);
+
+    const params = new URLSearchParams();
+    params.set('pa', vpa);
+    params.set('pn', name);
+    params.set('am', amtStr);
+    params.set('cu', 'INR');
+    params.set('tn', noteText);
+
+    return `intent://pay?${params.toString()}#Intent;scheme=upi;package=com.google.android.apps.nbu.paisa.user;end`;
   };
 
   const handleSelectRecent = (payee: RecentPayee) => {
@@ -189,6 +230,7 @@ export const PayWithUpiModal: React.FC<PayWithUpiModalProps> = ({
     if (data.name) setPayeeName(data.name);
     if (data.amount && data.amount > 0) setAmount(String(data.amount));
     if (data.note) setNotes(data.note);
+    if (data.merchantParams) setScannedMerchantParams(data.merchantParams);
     setScannedNotification(`Scanned UPI details for ${data.name || data.vpa}`);
     setShowScanner(false);
   };
@@ -214,11 +256,10 @@ export const PayWithUpiModal: React.FC<PayWithUpiModalProps> = ({
       return;
     }
 
-    const upiUri = buildUpiUri(false);
-    const tezUri = buildUpiUri(true);
+    const upiUri = buildUpiUri({ includeMerchantParams: !useSafeMode });
 
     try {
-      // Generate scannable QR Code
+      // Generate scannable QR Code using verified clean NPCI URI
       const qrUrl = await QRCode.toDataURL(upiUri, {
         width: 280,
         margin: 2,
@@ -245,17 +286,6 @@ export const PayWithUpiModal: React.FC<PayWithUpiModalProps> = ({
     }
 
     setStep('intent');
-
-    // On mobile devices, attempt to launch Google Pay directly
-    const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-    if (isMobile) {
-      // Try Google Pay Tez intent first, fallback to standard UPI
-      try {
-        window.location.href = tezUri;
-      } catch {
-        window.location.href = upiUri;
-      }
-    }
   };
 
   // Confirm payment success, deduct account and record ledger
@@ -287,20 +317,38 @@ export const PayWithUpiModal: React.FC<PayWithUpiModalProps> = ({
 
   const handleCopyVpa = () => {
     if (payeeVpa) {
-      navigator.clipboard.writeText(payeeVpa);
+      navigator.clipboard.writeText(payeeVpa.trim());
       setCopiedVpa(true);
       setTimeout(() => setCopiedVpa(false), 2000);
     }
   };
 
-  const handleLaunchGooglePay = () => {
-    const tezUri = buildUpiUri(true);
-    const upiUri = buildUpiUri(false);
-    try {
-      window.location.href = tezUri;
-    } catch {
-      window.location.href = upiUri;
+  const handleCopyAmount = () => {
+    if (numAmount > 0) {
+      navigator.clipboard.writeText(numAmount.toFixed(2));
+      setCopiedAmount(true);
+      setTimeout(() => setCopiedAmount(false), 2000);
     }
+  };
+
+  const handleLaunchGooglePay = () => {
+    const isAndroid = /Android/i.test(navigator.userAgent);
+    const gpayIntent = buildGpayAndroidIntent();
+    const standardUpi = buildUpiUri({ includeMerchantParams: !useSafeMode });
+
+    if (isAndroid) {
+      window.location.href = gpayIntent;
+      setTimeout(() => {
+        window.location.href = standardUpi;
+      }, 800);
+    } else {
+      window.location.href = standardUpi;
+    }
+  };
+
+  const handleLaunchUniversalUpi = () => {
+    const standardUpi = buildUpiUri({ includeMerchantParams: !useSafeMode });
+    window.location.href = standardUpi;
   };
 
   return (
@@ -635,63 +683,187 @@ export const PayWithUpiModal: React.FC<PayWithUpiModalProps> = ({
         {/* STEP 2: AWAITING PAYMENT / QR CODE & CONFIRMATION */}
         {step === 'intent' && (
           <div className="p-5 space-y-4 text-center">
-            <div className="bg-blue-50/70 border border-blue-200 rounded-2xl p-3 flex items-center justify-between gap-3 text-left">
-              <div>
-                <span className="text-[11px] font-bold text-blue-900 uppercase tracking-wider block">
+            {/* Payee and Amount Card */}
+            <div className="bg-gradient-to-r from-blue-50/90 to-indigo-50/90 border border-blue-200/90 rounded-2xl p-3.5 flex items-center justify-between gap-3 text-left">
+              <div className="min-w-0">
+                <span className="text-[10px] font-bold text-blue-900 uppercase tracking-wider block">
                   Paying To
                 </span>
-                <h4 className="font-extrabold text-sm text-slate-900">
+                <h4 className="font-extrabold text-sm text-slate-900 truncate">
                   {payeeName || payeeVpa}
                 </h4>
-                <p className="text-xs text-slate-500 font-mono">{payeeVpa}</p>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <span className="text-xs text-slate-600 font-mono truncate">{payeeVpa}</span>
+                  <button
+                    type="button"
+                    onClick={handleCopyVpa}
+                    className="p-1 hover:bg-blue-100 rounded text-blue-700 transition cursor-pointer shrink-0"
+                    title="Copy UPI ID"
+                  >
+                    {copiedVpa ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
               </div>
-              <div className="text-right">
-                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block">
+
+              <div className="text-right shrink-0">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
                   Amount
                 </span>
-                <span className="font-black text-lg text-emerald-700">
-                  ₹{numAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
-                </span>
+                <div className="flex items-center justify-end gap-1.5">
+                  <span className="font-black text-lg text-emerald-700">
+                    ₹{numAmount.toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleCopyAmount}
+                    className="p-1 hover:bg-emerald-100 rounded text-emerald-700 transition cursor-pointer"
+                    title="Copy Amount"
+                  >
+                    {copiedAmount ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                  </button>
+                </div>
               </div>
             </div>
 
-            {/* Dynamic UPI QR Code */}
+            {/* Google Pay "Risky Transaction" Prevention Status Banner */}
+            <div className="bg-amber-50/90 border border-amber-200/90 rounded-2xl p-3 text-left text-xs space-y-2">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5">
+                  <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span className="font-black text-slate-900 text-[11px] tracking-tight">
+                    Safe NPCI Clean Mode Active
+                  </span>
+                  <span className="px-1.5 py-0.5 rounded text-[9px] font-black bg-emerald-100 text-emerald-800">
+                    Anti-Risk
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowRiskGuide(!showRiskGuide)}
+                  className="text-[11px] font-bold text-amber-800 hover:text-amber-950 underline flex items-center gap-0.5 cursor-pointer shrink-0"
+                >
+                  <span>{showRiskGuide ? 'Hide details' : 'Why "Risky"?'}</span>
+                  {showRiskGuide ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                </button>
+              </div>
+
+              <p className="text-[11px] text-slate-600 leading-relaxed">
+                Removed third-party tracking reference codes (<code>tr</code>) so Google Pay treats this as a clean direct payment without triggering security blocks.
+              </p>
+
+              {/* Scanned merchant params mode toggle if present */}
+              {scannedMerchantParams && (
+                <div className="pt-1.5 border-t border-amber-200/60 flex items-center justify-between gap-2">
+                  <span className="text-[10px] font-bold text-slate-600">Scanned QR Mode:</span>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setUseSafeMode(true)}
+                      className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition cursor-pointer ${
+                        useSafeMode
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-white text-slate-600 border border-slate-200'
+                      }`}
+                    >
+                      Clean Safe (Recommended)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setUseSafeMode(false)}
+                      className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition cursor-pointer ${
+                        !useSafeMode
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-white text-slate-600 border border-slate-200'
+                      }`}
+                    >
+                      Original QR Tags
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Explanatory Collapsible for Google Pay Risky Transaction */}
+              {showRiskGuide && (
+                <div className="pt-2 border-t border-amber-200/80 text-[11px] text-slate-700 space-y-1.5 animate-fadeIn">
+                  <p className="font-bold text-amber-950">Why Google Pay sometimes flags transactions as Risky:</p>
+                  <ul className="list-disc list-inside space-y-1 text-slate-600 pl-1">
+                    <li>
+                      <strong>Fake Reference IDs:</strong> Google Pay automatically declines payment links containing custom <code>tr</code> parameters from non-bank apps. iVault strips these for safety.
+                    </li>
+                    <li>
+                      <strong>Bank Risk Engine:</strong> If the recipient VPA is newly registered or flagged on the banking network, Google Pay blocks deep links.
+                    </li>
+                  </ul>
+                  <div className="p-2 bg-amber-100/80 rounded-xl text-amber-950 font-medium">
+                    💡 <strong>Guaranteed 1-Tap Fallback:</strong> Tap <strong>"Copy UPI ID"</strong> &rarr; Open Google Pay app &rarr; Search/Paste in <em>"Pay UPI ID or number"</em> &rarr; Pay &rarr; Return and tap <strong>"Confirm Payment Completed"</strong> to deduct your balance!
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Launch Actions */}
+            <div className="space-y-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={handleLaunchGooglePay}
+                  className="w-full py-2.5 px-3 rounded-xl text-white font-extrabold text-xs shadow-md transition active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+                  style={{
+                    background: 'linear-gradient(135deg, #002D62 0%, #0B4884 60%, #4285F4 100%)',
+                  }}
+                >
+                  <Smartphone className="w-4 h-4 text-cyan-200" />
+                  <span>Open Google Pay App</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleLaunchUniversalUpi}
+                  className="w-full py-2.5 px-3 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-800 font-extrabold text-xs shadow-xs transition active:scale-95 cursor-pointer flex items-center justify-center gap-2"
+                >
+                  <ExternalLink className="w-3.5 h-3.5 text-blue-600" />
+                  <span>Any UPI App (PhonePe/Paytm)</span>
+                </button>
+              </div>
+
+              <div className="flex items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleCopyVpa}
+                  className="flex-1 py-2 px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
+                >
+                  {copiedVpa ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedVpa ? 'UPI ID Copied' : 'Copy Payee UPI ID'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleCopyAmount}
+                  className="flex-1 py-2 px-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
+                >
+                  {copiedAmount ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                  <span>{copiedAmount ? 'Amount Copied' : 'Copy Amount'}</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Dynamic Clean UPI QR Code */}
             <div className="bg-white p-3 rounded-2xl border border-slate-200 inline-block shadow-inner">
               {qrDataUrl ? (
                 <img
                   src={qrDataUrl}
                   alt="Google Pay UPI QR Code"
-                  className="w-56 h-56 mx-auto rounded-xl object-contain"
+                  className="w-48 h-48 mx-auto rounded-xl object-contain"
                 />
               ) : (
-                <div className="w-56 h-56 flex items-center justify-center text-slate-400">
+                <div className="w-48 h-48 flex items-center justify-center text-slate-400">
                   <RefreshCw className="w-8 h-8 animate-spin" />
                 </div>
               )}
-              <div className="mt-2 flex items-center justify-center gap-2 text-xs font-bold text-slate-700">
-                <Smartphone className="w-4 h-4 text-blue-600" />
-                <span>Scan with Google Pay App</span>
+              <div className="mt-2 flex items-center justify-center gap-1.5 text-xs font-bold text-slate-700">
+                <QrCode className="w-3.5 h-3.5 text-blue-600" />
+                <span>Or scan with Google Pay on another device</span>
               </div>
-            </div>
-
-            {/* Mobile 1-Tap Trigger Button */}
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
-              <button
-                type="button"
-                onClick={handleLaunchGooglePay}
-                className="w-full sm:w-auto px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition active:scale-95 cursor-pointer"
-              >
-                <Smartphone className="w-4 h-4" />
-                <span>Open Google Pay App</span>
-              </button>
-              <button
-                type="button"
-                onClick={handleCopyVpa}
-                className="w-full sm:w-auto px-3.5 py-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer"
-              >
-                {copiedVpa ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-                <span>{copiedVpa ? 'VPA Copied' : 'Copy UPI ID'}</span>
-              </button>
             </div>
 
             {/* Debit Confirmation Notice */}

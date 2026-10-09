@@ -29,6 +29,7 @@ export interface ParsedUpiData {
   note?: string;
   category?: string;
   raw: string;
+  merchantParams?: Record<string, string>;
 }
 
 export function parseUpiString(rawText: string): ParsedUpiData | null {
@@ -55,6 +56,13 @@ export function parseUpiString(rawText: string): ParsedUpiData | null {
       const am = params.get('am');
       const tn = params.get('tn') || '';
 
+      const merchantParams: Record<string, string> = {};
+      params.forEach((value, key) => {
+        if (!['pa', 'pn', 'am', 'tn'].includes(key)) {
+          merchantParams[key] = value;
+        }
+      });
+
       if (pa) {
         const cleanPa = decodeURIComponent(pa).trim();
         const cleanPn = pn
@@ -69,6 +77,7 @@ export function parseUpiString(rawText: string): ParsedUpiData | null {
           amount: parsedAmt && !isNaN(parsedAmt) && parsedAmt > 0 ? parsedAmt : undefined,
           note: cleanTn,
           raw: trimmed,
+          merchantParams: Object.keys(merchantParams).length > 0 ? merchantParams : undefined,
         };
       }
     } catch {
