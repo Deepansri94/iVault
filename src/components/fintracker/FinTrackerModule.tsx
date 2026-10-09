@@ -27,6 +27,7 @@ import {
   Wallet,
   AlertCircle,
   X,
+  Smartphone,
 } from 'lucide-react';
 import { Pagination } from '../common/Pagination';
 import type {
@@ -98,6 +99,7 @@ interface FinTrackerModuleProps {
   onUpdateInsurance?: (ins: Insurance) => void;
   onDeleteInsurance?: (id: string) => void;
   onUpdateGoldRates?: (rate24k: number, rate22k: number) => void;
+  onOpenPayWithUpi?: (accountId?: string) => void;
   onTriggerSync?: () => void;
   onPullFromSheets?: () => void;
   onRefreshStockPrices?: () => Promise<{ success: boolean; message: string; updatedCount: number } | any>;
@@ -125,6 +127,7 @@ export const FinTrackerModule: React.FC<FinTrackerModuleProps> = ({
   onDeleteAccount,
   onTransferBalance,
   onCashWithdrawal,
+  onOpenPayWithUpi,
   onAddBudget,
   onUpdateBudget,
   onDeleteBudget,
@@ -656,7 +659,16 @@ export const FinTrackerModule: React.FC<FinTrackerModuleProps> = ({
                     </div>
                     {account.upiId && <p className="text-xs text-slate-500">UPI: {account.upiId}</p>}
                     <div className="flex items-center justify-between border-t border-slate-100 pt-2 text-xs">
-                      <div className="flex items-center gap-1.5">
+                      <div className="flex items-center gap-1.5 flex-wrap">
+                        {onOpenPayWithUpi && (
+                          <button
+                            onClick={() => onOpenPayWithUpi(account.id)}
+                            className="flex items-center gap-1 rounded-lg px-2 py-1 font-bold text-blue-700 hover:bg-blue-50 transition cursor-pointer"
+                            title={`Pay with UPI from ${account.name}`}
+                          >
+                            <Smartphone className="h-3.5 w-3.5 text-blue-600" /> Pay UPI
+                          </button>
+                        )}
                         <button
                           onClick={() => {
                             setActionAccountId(account.id);
@@ -769,25 +781,27 @@ export const FinTrackerModule: React.FC<FinTrackerModuleProps> = ({
                 </button>
               </div>
 
-              {onTriggerSync && (
+              {/* Pay with UPI (Google Pay) Action */}
+              {onOpenPayWithUpi && (
                 <button
-                  onClick={onTriggerSync}
-                  className="px-2.5 py-2 bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 font-bold text-xs rounded-xl flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-2xs"
-                  title="Push staged local transactions to Google Sheets"
+                  onClick={() => onOpenPayWithUpi()}
+                  className="px-3.5 py-2 bg-gradient-to-r from-[#002D62] to-[#0B4884] hover:from-[#0B4884] hover:to-[#002D62] text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+                  title="Pay via Google Pay / UPI and auto-debit account"
                 >
-                  <Cloud className="w-3.5 h-3.5 text-amber-600" />
-                  <span className="hidden xs:inline">Sync Sheet</span>
+                  <Smartphone className="w-3.5 h-3.5 text-emerald-300" />
+                  <span>Pay with UPI</span>
                 </button>
               )}
 
-              {onPullFromSheets && (
+              {/* Unified Cloud Sync */}
+              {(onPullFromSheets || onTriggerSync) && (
                 <button
-                  onClick={onPullFromSheets}
-                  className="px-2.5 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold text-xs rounded-xl flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-2xs"
-                  title="Pull verified transactions from Google Sheets"
+                  onClick={onPullFromSheets || onTriggerSync}
+                  className="px-3 py-2 bg-emerald-50 hover:bg-emerald-100 text-emerald-900 border border-emerald-300 font-bold text-xs rounded-xl flex items-center gap-1.5 transition active:scale-95 cursor-pointer shadow-2xs"
+                  title="Sync verified transactions with Google Sheets"
                 >
                   <RefreshCw className="w-3.5 h-3.5 text-emerald-600" />
-                  <span className="hidden xs:inline">Pull Sheet</span>
+                  <span className="hidden xs:inline">Sync Cloud</span>
                 </button>
               )}
 

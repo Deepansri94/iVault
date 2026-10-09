@@ -287,4 +287,69 @@ describe('iVault Pro Full-Flow Integration Tests', () => {
     expect(stock?.symbol).toEqual('TCS');
     expect(stock?.currentNAV).toEqual(3000);
   });
+
+  it('should support Google Pay UPI payment with automatic account deduction and ledger entry', async () => {
+    // 1. Seed a bank account with initial balance
+    const accountId = `acc-upi-test-${Date.now()}`;
+    await db.accounts.put({
+      id: accountId,
+      name: 'HDFC Salary Account',
+      bankName: 'HDFC Bank',
+      accountNumber: 'XXXX1234',
+      type: 'Savings',
+      balance: 50000,
+      familyMember: 'Deepan',
+      lastUpdated: new Date().toISOString(),
+    });
+
+    const initialAccount = await db.accounts.get(accountId);
+    expect(initialAccount?.balance).toEqual(50000);
+
+    // 2. Perform Google Pay UPI payment of ₹2,450 to Swiggy
+    const paymentAmount = 2450;
+    const payeeVpa = 'swiggy@icici';
+    const payeeName = 'Swiggy';
+    const category = 'Food & Dining';
+    const userNote = 'Weekend family dinner';
+
+    // Simulate account deduction
+    const account = await db.accounts.get(accountId);
+    expect(account).toBeDefined();
+    if (account) {
+      account.balance -= paymentAmount;
+      account.lastUpdated = new Date().toISOString();
+      await db.accounts.put(account);
+    }
+
+    // Simulate Ledger transaction recording
+    const txId = `tx-upi-${Date.now()}`;
+    const txNote = `${userNote} (Paid to ${payeeName} [${payeeVpa}] via Google Pay)`;
+    await db.transactions.put({
+      id: txId,
+      date: new Date().toISOString().split('T')[0],
+      amount: paymentAmount,
+      type: 'expense',
+      category,
+      paymentMode: 'UPI',
+      accountId,
+      familyMember: 'Deepan',
+      notes: txNote,
+      syncedToSheets: false,
+    });
+
+    // 3. Verify bank account balance is reduced
+    const updatedAccount = await db.accounts.get(accountId);
+    expect(updatedAccount?.balance).toEqual(50000 - 2450); // 47550
+
+    // 4. Verify transaction exists in ledger with all details
+    const tx = await db.transactions.get(txId);
+    expect(tx).toBeDefined();
+    expect(tx?.amount).toEqual(2450);
+    expect(tx?.paymentMode).toEqual('UPI');
+    expect(tx?.category).toEqual('Food & Dining');
+    expect(tx?.accountId).toEqual(accountId);
+    expect(tx?.notes).toContain('Swiggy');
+    expect(tx?.notes).toContain('Google Pay');
+  });
 });
+

@@ -18,19 +18,17 @@ import {
   RefreshCw,
   Sparkles,
   Cloud,
-  ArrowLeftRight,
-  Banknote,
+  Smartphone,
 } from 'lucide-react';
 
 interface QuickActionGridProps {
   onNavigateTab: (tab: string) => void;
+  onOpenPayWithUpi?: () => void;
   onOpenSmartEntry: () => void;
   onOpenQuickExpense: () => void;
   onOpenQuickIncome: () => void;
   onTriggerSync: () => void;
   onPullFromSheets?: () => void;
-  onOpenTransfer?: () => void;
-  onOpenWithdrawal?: () => void;
   pendingSyncCount: number;
   lowStockMedsCount: number;
   expiringDocsCount: number;
@@ -38,22 +36,32 @@ interface QuickActionGridProps {
 
 export const QuickActionGrid: React.FC<QuickActionGridProps> = ({
   onNavigateTab,
+  onOpenPayWithUpi,
   onOpenSmartEntry,
   onOpenQuickExpense,
   onOpenQuickIncome,
   onTriggerSync,
   onPullFromSheets,
-  onOpenTransfer,
-  onOpenWithdrawal,
   pendingSyncCount,
   lowStockMedsCount,
   expiringDocsCount,
 }) => {
   const primaryActions = [
     {
+      id: 'upi',
+      label: 'Pay with UPI',
+      subtext: 'Google Pay • Instant Debit',
+      icon: Smartphone,
+      gradient: 'from-[#002D62] via-[#0B4884] to-[#C93B2B]',
+      textColor: 'text-[#002D62]',
+      bgColor: 'bg-blue-50/80 hover:bg-blue-100/80 border-blue-200/90',
+      badge: 'GPay',
+      onClick: onOpenPayWithUpi || onOpenQuickExpense,
+    },
+    {
       id: 'pay',
       label: 'Record Expense',
-      subtext: 'Quick UPI / Debit',
+      subtext: 'Cash / Card / NetBanking',
       icon: Send,
       gradient: 'from-rose-500 to-rose-600',
       textColor: 'text-rose-700',
@@ -64,7 +72,7 @@ export const QuickActionGrid: React.FC<QuickActionGridProps> = ({
     {
       id: 'income',
       label: 'Add Income',
-      subtext: 'Salary / Credit',
+      subtext: 'Salary / Credit / Returns',
       icon: PlusCircle,
       gradient: 'from-emerald-500 to-emerald-600',
       textColor: 'text-emerald-700',
@@ -75,7 +83,7 @@ export const QuickActionGrid: React.FC<QuickActionGridProps> = ({
     {
       id: 'smart-entry',
       label: 'Smart Fast Entry',
-      subtext: 'Natural Language NLP',
+      subtext: 'Voice & Natural Language',
       icon: Sparkles,
       gradient: 'from-purple-600 to-indigo-600',
       textColor: 'text-purple-800',
@@ -85,21 +93,21 @@ export const QuickActionGrid: React.FC<QuickActionGridProps> = ({
     },
     {
       id: 'sync',
-      label: 'Pull Sheet Data',
-      subtext: 'Reload Google Sheet',
+      label: 'Cloud Sync',
+      subtext: 'Google Sheets 2-Way Sync',
       icon: Cloud,
       gradient: 'from-amber-500 to-amber-600',
       textColor: 'text-amber-800',
       bgColor: 'bg-amber-50/70 hover:bg-amber-100/70 border-amber-200/80',
-      badge: 'Cloud Sync',
+      badge: 'Sheets',
       onClick: onPullFromSheets || onTriggerSync,
     },
   ];
 
   return (
     <section className="w-full max-w-7xl mx-auto px-4 mt-4">
-      {/* 4 Focused Action Cards */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      {/* 5 Focused Action Cards with Responsive Grid */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {primaryActions.map((act) => {
           const Icon = act.icon;
           return (
@@ -127,30 +135,6 @@ export const QuickActionGrid: React.FC<QuickActionGridProps> = ({
           );
         })}
       </div>
-
-      {/* Banking & Cash Transfer Quick Bar */}
-      {(onOpenTransfer || onOpenWithdrawal) && (
-        <div className="mt-2.5 grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-          {onOpenTransfer && (
-            <button
-              onClick={onOpenTransfer}
-              className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-indigo-50/90 hover:bg-indigo-100 border border-indigo-200/90 text-indigo-950 font-bold text-xs shadow-2xs transition active:scale-98 cursor-pointer"
-            >
-              <ArrowLeftRight className="w-4 h-4 text-indigo-600" />
-              <span>Transfer Between Accounts</span>
-            </button>
-          )}
-          {onOpenWithdrawal && (
-            <button
-              onClick={onOpenWithdrawal}
-              className="flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-amber-50/90 hover:bg-amber-100 border border-amber-200/90 text-amber-950 font-bold text-xs shadow-2xs transition active:scale-98 cursor-pointer"
-            >
-              <Banknote className="w-4 h-4 text-amber-700" />
-              <span>Cash Withdrawal</span>
-            </button>
-          )}
-        </div>
-      )}
 
       {/* Clean Quick Category Radar Pill Bar */}
       <div className="mt-2.5 flex items-center justify-between bg-white px-3.5 py-2 rounded-xl border border-slate-200/80 shadow-2xs text-xs overflow-x-auto scrollbar-none gap-2">

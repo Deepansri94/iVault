@@ -75,31 +75,9 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
         </div>
 
         {/* Right utility buttons */}
-        <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-          {/* Pull Sheet Button (Always accessible on Mobile & Desktop) */}
-          {onPullFromSheets && (
-            <button
-              onClick={onPullFromSheets}
-              className="px-2 sm:px-2.5 py-1.5 rounded-xl bg-emerald-500/25 hover:bg-emerald-500/35 text-emerald-100 border border-emerald-400/40 transition active:scale-95 flex items-center gap-1.5 cursor-pointer shadow-xs"
-              title="Pull latest data from Google Sheet and reload"
-            >
-              <RefreshCw className="w-4 h-4 text-emerald-300 shrink-0" />
-              <span className="text-xs font-bold whitespace-nowrap hidden sm:inline">Pull Sheet</span>
-            </button>
-          )}
-
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {/* PWA Install Button */}
           <PWAInstallButton />
-
-          {/* Smart Fast-Track Entry Button */}
-          <button
-            onClick={onOpenSmartEntry}
-            className="px-2 sm:px-2.5 py-1.5 rounded-xl bg-purple-500/25 hover:bg-purple-500/35 text-purple-100 border border-purple-400/40 transition active:scale-95 flex items-center gap-1.5 cursor-pointer shadow-xs"
-            title="Smart Natural Language Entry"
-          >
-            <Sparkles className="w-4 h-4 text-purple-200 shrink-0" />
-            <span className="text-xs font-bold whitespace-nowrap hidden sm:inline">Smart Entry</span>
-          </button>
 
           {/* Notifications Bell */}
           <button
@@ -181,23 +159,6 @@ export const TopHeader: React.FC<TopHeaderProps> = ({
               <Cloud className="w-3 h-3" />
               <span>{isSheetsConnected ? 'Sheets Connected' : 'Offline Mode'}</span>
             </span>
-            {onPullFromSheets && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onPullFromSheets();
-                }}
-                className={`px-1.5 py-0.5 rounded-md font-extrabold text-[10px] flex items-center gap-1 transition active:scale-95 border cursor-pointer ${
-                  isSheetsConnected 
-                    ? 'bg-emerald-500/25 hover:bg-emerald-500/40 text-emerald-100 border-emerald-400/30' 
-                    : 'bg-white/10 hover:bg-white/20 text-white border-white/20'
-                }`}
-                title="Pull latest data from Google Sheet and reload"
-              >
-                <RefreshCw className="w-2.5 h-2.5 shrink-0 animate-pulse" />
-                <span>Pull Sheet</span>
-              </button>
-            )}
           </div>
         </div>
         <div className="flex items-center gap-1 text-white/70 text-[11px]">

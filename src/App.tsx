@@ -55,6 +55,7 @@ import { SmartQuickEntryModal } from './components/dashboard/SmartQuickEntryModa
 import { TestRunnerModal } from './components/testing/TestRunnerModal';
 import { PrescriptionModal } from './components/medicines/PrescriptionModal';
 import { BalanceTransferModal, CashWithdrawalModal } from './components/fintracker/AccountActionModals';
+import { PayWithUpiModal, PayWithUpiPayload } from './components/fintracker/PayWithUpiModal';
 import { X, TrendingUp, Sparkles, CheckCircle2, Shield, AlertCircle, Cloud, ArrowLeftRight, Banknote } from 'lucide-react';
 
 export default function App() {
@@ -90,6 +91,8 @@ export default function App() {
   const [showQuickIncomeModal, setShowQuickIncomeModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
+  const [showPayWithUpiModal, setShowPayWithUpiModal] = useState(false);
+  const [payWithUpiAccountId, setPayWithUpiAccountId] = useState<string | undefined>(undefined);
 
   const quickExpenseModalRef = useFormFocus<HTMLDivElement>(showQuickExpenseModal);
   const quickIncomeModalRef = useFormFocus<HTMLDivElement>(showQuickIncomeModal);
@@ -703,6 +706,36 @@ export default function App() {
     setQuickIncomePaymentMode('Net Banking');
     setQuickIncomeAccountId('');
     setShowQuickIncomeModal(true);
+  };
+
+  // Google Pay / UPI Payment Handlers
+  const handleOpenPayWithUpi = (accountId?: string) => {
+    setPayWithUpiAccountId(accountId);
+    setShowPayWithUpiModal(true);
+  };
+
+  const handleConfirmUpiPayment = async (payload: PayWithUpiPayload) => {
+    const noteText = payload.notes
+      ? `${payload.notes} (Paid to ${payload.payeeName} [${payload.payeeVpa}] via Google Pay)`
+      : `Paid to ${payload.payeeName} [${payload.payeeVpa}] via Google Pay`;
+
+    await handleAddTransaction({
+      date: payload.date || new Date().toISOString().split('T')[0],
+      amount: payload.amount,
+      type: 'expense',
+      category: payload.category,
+      paymentMode: 'UPI',
+      accountId: payload.accountId,
+      familyMember: payload.familyMember,
+      notes: noteText,
+      syncedToSheets: false,
+    });
+
+    const account = accounts.find((a) => a.id === payload.accountId);
+    showToast(
+      `Paid ₹${payload.amount.toLocaleString('en-IN')} via Google Pay to ${payload.payeeName}. Debited from ${account?.name || 'Bank Account'}.`,
+      'success'
+    );
   };
 
   // Quick Action Expense Handler
@@ -1364,7 +1397,7 @@ export default function App() {
               }}
             />
 
-            {/* Quick Action 8-Tile Icon Grid */}
+            {/* Quick Action Icon Grid */}
             <QuickActionGrid
               onNavigateTab={(tab) => {
                 const fintrackerSubTabs = ['ledger', 'accounts', 'budgets', 'fixed', 'demat', 'gold', 'loans', 'insurances'];
@@ -1375,11 +1408,10 @@ export default function App() {
                   setActiveTab(tab);
                 }
               }}
+              onOpenPayWithUpi={() => handleOpenPayWithUpi()}
               onOpenSmartEntry={() => setShowSmartEntryModal(true)}
               onOpenQuickExpense={handleOpenQuickExpense}
               onOpenQuickIncome={handleOpenQuickIncome}
-              onOpenTransfer={() => setShowTransferModal(true)}
-              onOpenWithdrawal={() => setShowWithdrawalModal(true)}
               onTriggerSync={handleTriggerSync}
               onPullFromSheets={handlePullFromSheets}
               pendingSyncCount={pendingSyncCount}
@@ -1428,6 +1460,7 @@ export default function App() {
             onDeleteAccount={handleDeleteAccount}
             onTransferBalance={handleTransferBalance}
             onCashWithdrawal={handleCashWithdrawal}
+            onOpenPayWithUpi={handleOpenPayWithUpi}
             onAddBudget={handleAddBudget}
             onUpdateBudget={handleUpdateBudget}
             onDeleteBudget={handleDeleteBudget}
@@ -1562,6 +1595,35 @@ export default function App() {
         medicines={medicines}
         familyMembers={familyMembers}
         initialMemberFilter="all"
+      />
+
+      {/* Google Pay & Universal UPI Instant Payment Modal */}
+      <PayWithUpiModal
+        isOpen={showPayWithUpiModal}
+        onClose={() => {
+          setShowPayWithUpiModal(false);
+          setPayWithUpiAccountId(undefined);
+        }}
+        accounts={accounts}
+        categories={
+          budgets.length > 0
+            ? budgets.map((b) => b.category)
+            : [
+                'Food & Dining',
+                'Groceries & Provisions',
+                'Bills & Utilities',
+                'Shopping & E-Commerce',
+                'Medical & Healthcare',
+                'Fuel & Transport',
+                'Entertainment',
+                'Education',
+                'Other Expenses',
+              ]
+        }
+        familyMembers={familyMembers.map((m) => m.name)}
+        activeMember={activeMember}
+        defaultAccountId={payWithUpiAccountId}
+        onConfirmPayment={handleConfirmUpiPayment}
       />
 
       {/* MODAL: Wealth Analytics Drawer */}
