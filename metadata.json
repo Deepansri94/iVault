@@ -1,0 +1,6 @@
+{
+  "name": "iVault Pro - Unified Personal Finance & Family Vault",
+  "description": "Offline-first personal finance dashboard, investment portfolios, family documents with redaction, medicine tracking, and AES-GCM password vault.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

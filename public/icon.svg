@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#C93B2B" />
+      <stop offset="60%" stop-color="#A52316" />
+      <stop offset="100%" stop-color="#002D62" />
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FDE047" />
+      <stop offset="50%" stop-color="#F59E0B" />
+      <stop offset="100%" stop-color="#D97706" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="8" stdDeviation="12" flood-color="#000000" flood-opacity="0.35" />
+    </filter>
+  </defs>
+  <!-- Background with safe padding for maskable icon -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)" />
+  <!-- Inner circular ring for safe zone -->
+  <circle cx="256" cy="256" r="190" fill="none" stroke="rgba(255,255,255,0.12)" stroke-width="3" />
+  <!-- Shield Vault Silhouette -->
+  <path d="M256 96 L376 148 V264 C376 342 324 402 256 428 C188 402 136 342 136 264 V148 Z" 
+        fill="#002D62" stroke="url(#goldGrad)" stroke-width="8" filter="url(#shadow)" />
+  <!-- Inner Safe Dial & Keyhole -->
+  <circle cx="256" cy="260" r="64" fill="none" stroke="url(#goldGrad)" stroke-width="8" stroke-dasharray="14 10" />
+  <circle cx="256" cy="260" r="42" fill="url(#bgGrad)" />
+  <circle cx="256" cy="248" r="12" fill="#FDE047" />
+  <path d="M252 248 L248 284 H264 L260 248 Z" fill="#FDE047" />
+  <!-- Stylized "i" iVault monogram letter mark -->
+  <circle cx="256" cy="154" r="10" fill="#FFFFFF" />
+  <rect x="250" y="172" width="12" height="34" rx="6" fill="#FFFFFF" />
+</svg>
