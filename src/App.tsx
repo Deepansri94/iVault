@@ -93,6 +93,7 @@ export default function App() {
   const [showWithdrawalModal, setShowWithdrawalModal] = useState(false);
   const [showPayWithUpiModal, setShowPayWithUpiModal] = useState(false);
   const [payWithUpiAccountId, setPayWithUpiAccountId] = useState<string | undefined>(undefined);
+  const [payWithUpiInitialMode, setPayWithUpiInitialMode] = useState<'form' | 'scanner'>('form');
 
   const quickExpenseModalRef = useFormFocus<HTMLDivElement>(showQuickExpenseModal);
   const quickIncomeModalRef = useFormFocus<HTMLDivElement>(showQuickIncomeModal);
@@ -709,8 +710,9 @@ export default function App() {
   };
 
   // Google Pay / UPI Payment Handlers
-  const handleOpenPayWithUpi = (accountId?: string) => {
+  const handleOpenPayWithUpi = (accountId?: string, initialMode: 'form' | 'scanner' = 'form') => {
     setPayWithUpiAccountId(accountId);
+    setPayWithUpiInitialMode(initialMode);
     setShowPayWithUpiModal(true);
   };
 
@@ -1408,7 +1410,7 @@ export default function App() {
                   setActiveTab(tab);
                 }
               }}
-              onOpenPayWithUpi={() => handleOpenPayWithUpi()}
+              onOpenPayWithUpi={(initialMode) => handleOpenPayWithUpi(undefined, initialMode || 'form')}
               onOpenSmartEntry={() => setShowSmartEntryModal(true)}
               onOpenQuickExpense={handleOpenQuickExpense}
               onOpenQuickIncome={handleOpenQuickIncome}
@@ -1603,6 +1605,7 @@ export default function App() {
         onClose={() => {
           setShowPayWithUpiModal(false);
           setPayWithUpiAccountId(undefined);
+          setPayWithUpiInitialMode('form');
         }}
         accounts={accounts}
         categories={
@@ -1623,6 +1626,7 @@ export default function App() {
         familyMembers={familyMembers.map((m) => m.name)}
         activeMember={activeMember}
         defaultAccountId={payWithUpiAccountId}
+        initialMode={payWithUpiInitialMode}
         onConfirmPayment={handleConfirmUpiPayment}
       />
 

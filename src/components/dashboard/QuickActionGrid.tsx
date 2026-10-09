@@ -19,11 +19,12 @@ import {
   Sparkles,
   Cloud,
   Smartphone,
+  QrCode,
 } from 'lucide-react';
 
 interface QuickActionGridProps {
   onNavigateTab: (tab: string) => void;
-  onOpenPayWithUpi?: () => void;
+  onOpenPayWithUpi?: (initialMode?: 'form' | 'scanner') => void;
   onOpenSmartEntry: () => void;
   onOpenQuickExpense: () => void;
   onOpenQuickIncome: () => void;
@@ -49,14 +50,14 @@ export const QuickActionGrid: React.FC<QuickActionGridProps> = ({
   const primaryActions = [
     {
       id: 'upi',
-      label: 'Pay with UPI',
-      subtext: 'Google Pay • Instant Debit',
+      label: 'Pay & Scan UPI',
+      subtext: 'Google Pay • QR Scanner',
       icon: Smartphone,
       gradient: 'from-[#002D62] via-[#0B4884] to-[#C93B2B]',
       textColor: 'text-[#002D62]',
       bgColor: 'bg-blue-50/80 hover:bg-blue-100/80 border-blue-200/90',
-      badge: 'GPay',
-      onClick: onOpenPayWithUpi || onOpenQuickExpense,
+      badge: 'GPay / QR',
+      onClick: () => onOpenPayWithUpi ? onOpenPayWithUpi() : onOpenQuickExpense(),
     },
     {
       id: 'pay',

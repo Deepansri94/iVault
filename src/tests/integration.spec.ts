@@ -15,6 +15,7 @@ import { CryptoService } from '../services/crypto.service';
 import { SmartParserService } from '../services/smart-parser.service';
 import { NotificationService } from '../services/notification.service';
 import { parseSheetDate, GoogleSheetsSyncService } from '../services/google-sheets-sync.service';
+import { parseUpiString } from '../components/fintracker/UpiQrScanner';
 
 describe('iVault Pro Full-Flow Integration Tests', () => {
   beforeEach(async () => {
@@ -298,7 +299,6 @@ describe('iVault Pro Full-Flow Integration Tests', () => {
       accountNumber: 'XXXX1234',
       type: 'Savings',
       balance: 50000,
-      familyMember: 'Deepan',
       lastUpdated: new Date().toISOString(),
     });
 
@@ -350,6 +350,32 @@ describe('iVault Pro Full-Flow Integration Tests', () => {
     expect(tx?.accountId).toEqual(accountId);
     expect(tx?.notes).toContain('Swiggy');
     expect(tx?.notes).toContain('Google Pay');
+  });
+
+  it('should parse various UPI QR code schemes accurately for Google Pay', () => {
+    // Standard UPI URI with payee, name, amount and note
+    const upiUri = 'upi://pay?pa=freshmart@okaxis&pn=Fresh%20Mart&am=340.50&cu=INR&tn=Vegetables%20Purchase';
+    const parsed = parseUpiString(upiUri);
+    expect(parsed).not.toBeNull();
+    expect(parsed?.vpa).toEqual('freshmart@okaxis');
+    expect(parsed?.name).toEqual('Fresh Mart');
+    expect(parsed?.amount).toEqual(340.5);
+    expect(parsed?.note).toEqual('Vegetables Purchase');
+
+    // Google Pay tez:// protocol
+    const tezUri = 'tez://upi/pay?pa=restaurant@hdfcbank&pn=Golden%20Dhaba&am=1200';
+    const tezParsed = parseUpiString(tezUri);
+    expect(tezParsed).not.toBeNull();
+    expect(tezParsed?.vpa).toEqual('restaurant@hdfcbank');
+    expect(tezParsed?.name).toEqual('Golden Dhaba');
+    expect(tezParsed?.amount).toEqual(1200);
+
+    // Plain VPA string
+    const plainVpa = 'deepan@okicici';
+    const plainParsed = parseUpiString(plainVpa);
+    expect(plainParsed).not.toBeNull();
+    expect(plainParsed?.vpa).toEqual('deepan@okicici');
+    expect(plainParsed?.name).toEqual('deepan');
   });
 });
 

@@ -23,8 +23,11 @@ import {
   ExternalLink,
   ShieldCheck,
   RefreshCw,
+  Camera,
+  Sparkles,
 } from 'lucide-react';
-import type { Account, Transaction } from '../../types/db.types';
+import type { Account } from '../../types/db.types';
+import { UpiQrScanner, type ParsedUpiData } from './UpiQrScanner';
 
 export interface PayWithUpiPayload {
   accountId: string;
@@ -45,6 +48,7 @@ interface PayWithUpiModalProps {
   familyMembers: string[];
   activeMember: string;
   defaultAccountId?: string;
+  initialMode?: 'form' | 'scanner';
   onConfirmPayment: (payload: PayWithUpiPayload) => Promise<void> | void;
 }
 
@@ -70,6 +74,7 @@ export const PayWithUpiModal: React.FC<PayWithUpiModalProps> = ({
   familyMembers,
   activeMember,
   defaultAccountId,
+  initialMode,
   onConfirmPayment,
 }) => {
   const payeeVpaId = useId();
@@ -91,6 +96,8 @@ export const PayWithUpiModal: React.FC<PayWithUpiModalProps> = ({
 
   // Flow step: 'form' | 'intent' | 'success'
   const [step, setStep] = useState<'form' | 'intent' | 'success'>('form');
+  const [showScanner, setShowScanner] = useState(false);
+  const [scannedNotification, setScannedNotification] = useState<string | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [copiedVpa, setCopiedVpa] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -116,6 +123,13 @@ export const PayWithUpiModal: React.FC<PayWithUpiModalProps> = ({
       setErrorMessage(null);
       setIsSubmitting(false);
       setCopiedVpa(false);
+      setScannedNotification(null);
+
+      if (initialMode === 'scanner') {
+        setShowScanner(true);
+      } else {
+        setShowScanner(false);
+      }
 
       // Select default account: prefer provided default or first savings account with balance > 0
       if (defaultAccountId && accounts.some((a) => a.id === defaultAccountId)) {
@@ -168,6 +182,15 @@ export const PayWithUpiModal: React.FC<PayWithUpiModalProps> = ({
     if (payee.category && categories.includes(payee.category)) {
       setCategory(payee.category);
     }
+  };
+
+  const handleQrScanned = (data: ParsedUpiData) => {
+    setPayeeVpa(data.vpa);
+    if (data.name) setPayeeName(data.name);
+    if (data.amount && data.amount > 0) setAmount(String(data.amount));
+    if (data.note) setNotes(data.note);
+    setScannedNotification(`Scanned UPI details for ${data.name || data.vpa}`);
+    setShowScanner(false);
   };
 
   // Launch Google Pay and display scannable QR
@@ -331,6 +354,52 @@ export const PayWithUpiModal: React.FC<PayWithUpiModalProps> = ({
               </div>
             )}
 
+            {/* Scanned from QR feedback notice */}
+            {scannedNotification && (
+              <div className="p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center justify-between gap-2 animate-fadeIn">
+                <div className="flex items-center gap-2 min-w-0">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span className="font-semibold truncate">{scannedNotification}</span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setScannedNotification(null)}
+                  className="p-1 hover:bg-emerald-100 rounded-lg text-emerald-700 transition cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
+            {/* Scan Any UPI QR Code CTA Banner */}
+            <div className="bg-gradient-to-r from-blue-50/90 via-indigo-50/90 to-purple-50/90 border border-blue-200/80 rounded-2xl p-3 flex items-center justify-between gap-3 shadow-xs">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#002D62] to-[#0B4884] text-white flex items-center justify-center shrink-0 shadow-sm">
+                  <Camera className="w-5 h-5 text-cyan-200" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-xs font-black text-slate-900 tracking-tight">Scan Merchant QR</span>
+                    <span className="px-1.5 py-0.2 rounded text-[9px] font-black bg-blue-600 text-white uppercase tracking-wider">
+                      Auto-Fill
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 truncate">
+                    Camera viewfinder or gallery screenshot
+                  </p>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setShowScanner(true)}
+                className="px-3 py-2 rounded-xl bg-[#002D62] hover:bg-[#0B4884] text-white text-xs font-extrabold flex items-center gap-1.5 shadow-sm transition active:scale-95 cursor-pointer shrink-0"
+              >
+                <QrCode className="w-3.5 h-3.5" />
+                <span>Scan QR</span>
+              </button>
+            </div>
+
             {/* Quick Payee Suggestions */}
             <div>
               <label className="text-[11px] font-bold text-slate-500 uppercase tracking-wider block mb-1.5">
@@ -359,9 +428,19 @@ export const PayWithUpiModal: React.FC<PayWithUpiModalProps> = ({
             {/* Payee VPA and Name */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div>
-                <label htmlFor={payeeVpaId} className="text-xs font-bold text-slate-700 block mb-1">
-                  Payee UPI ID (VPA) <span className="text-rose-500">*</span>
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label htmlFor={payeeVpaId} className="text-xs font-bold text-slate-700">
+                    Payee UPI ID (VPA) <span className="text-rose-500">*</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowScanner(true)}
+                    className="text-[11px] font-bold text-blue-600 hover:text-blue-700 flex items-center gap-1 cursor-pointer"
+                  >
+                    <Camera className="w-3 h-3" />
+                    <span>Scan</span>
+                  </button>
+                </div>
                 <div className="relative">
                   <input
                     id={payeeVpaId}
@@ -370,8 +449,17 @@ export const PayWithUpiModal: React.FC<PayWithUpiModalProps> = ({
                     placeholder="e.g. merchant@okaxis"
                     value={payeeVpa}
                     onChange={(e) => setPayeeVpa(e.target.value)}
-                    className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono"
+                    className="w-full pl-3 pr-16 py-2 text-xs rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 font-mono"
                   />
+                  <button
+                    type="button"
+                    onClick={() => setShowScanner(true)}
+                    className="absolute right-1.5 top-1/2 -translate-y-1/2 px-2 py-1 bg-slate-100 hover:bg-blue-50 text-slate-700 hover:text-blue-700 rounded-lg text-[10px] font-bold flex items-center gap-1 transition cursor-pointer"
+                    title="Scan UPI QR Code"
+                  >
+                    <QrCode className="w-3 h-3" />
+                    <span>Scan</span>
+                  </button>
                 </div>
               </div>
 
@@ -663,6 +751,14 @@ export const PayWithUpiModal: React.FC<PayWithUpiModalProps> = ({
           </div>
         )}
       </div>
+
+      {/* Embedded Live Camera & File QR Scanner */}
+      {showScanner && (
+        <UpiQrScanner
+          onScanSuccess={handleQrScanned}
+          onClose={() => setShowScanner(false)}
+        />
+      )}
     </div>
   );
 };

@@ -32,6 +32,27 @@
   animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 
+@keyframes scanBeam {
+  0% {
+    top: 5%;
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    top: 95%;
+    opacity: 0;
+  }
+}
+
+.animate-scanBeam {
+  animation: scanBeam 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
 /* Mobile safe area padding */
 .safe-area-inset-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0.75rem);

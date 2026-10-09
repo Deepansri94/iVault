@@ -28,6 +28,7 @@ import {
   AlertCircle,
   X,
   Smartphone,
+  QrCode,
 } from 'lucide-react';
 import { Pagination } from '../common/Pagination';
 import type {
@@ -99,7 +100,7 @@ interface FinTrackerModuleProps {
   onUpdateInsurance?: (ins: Insurance) => void;
   onDeleteInsurance?: (id: string) => void;
   onUpdateGoldRates?: (rate24k: number, rate22k: number) => void;
-  onOpenPayWithUpi?: (accountId?: string) => void;
+  onOpenPayWithUpi?: (accountId?: string, initialMode?: 'form' | 'scanner') => void;
   onTriggerSync?: () => void;
   onPullFromSheets?: () => void;
   onRefreshStockPrices?: () => Promise<{ success: boolean; message: string; updatedCount: number } | any>;
@@ -781,16 +782,28 @@ export const FinTrackerModule: React.FC<FinTrackerModuleProps> = ({
                 </button>
               </div>
 
-              {/* Pay with UPI (Google Pay) Action */}
+              {/* Pay with UPI (Google Pay) & Scan QR Actions */}
               {onOpenPayWithUpi && (
-                <button
-                  onClick={() => onOpenPayWithUpi()}
-                  className="px-3.5 py-2 bg-gradient-to-r from-[#002D62] to-[#0B4884] hover:from-[#0B4884] hover:to-[#002D62] text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
-                  title="Pay via Google Pay / UPI and auto-debit account"
-                >
-                  <Smartphone className="w-3.5 h-3.5 text-emerald-300" />
-                  <span>Pay with UPI</span>
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={() => onOpenPayWithUpi(undefined, 'scanner')}
+                    className="px-3 py-2 bg-gradient-to-r from-indigo-600 to-blue-700 hover:from-indigo-500 hover:to-blue-600 text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+                    title="Scan any UPI QR Code using camera or screenshot"
+                  >
+                    <QrCode className="w-3.5 h-3.5 text-cyan-200" />
+                    <span>Scan QR</span>
+                  </button>
+
+                  <button
+                    onClick={() => onOpenPayWithUpi()}
+                    className="px-3.5 py-2 bg-gradient-to-r from-[#002D62] to-[#0B4884] hover:from-[#0B4884] hover:to-[#002D62] text-white font-bold text-xs rounded-xl shadow-xs flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
+                    title="Pay via Google Pay / UPI and auto-debit account"
+                  >
+                    <Smartphone className="w-3.5 h-3.5 text-emerald-300" />
+                    <span className="hidden sm:inline">Pay with UPI</span>
+                    <span className="sm:hidden">Pay</span>
+                  </button>
+                </div>
               )}
 
               {/* Unified Cloud Sync */}
