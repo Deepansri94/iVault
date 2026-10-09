@@ -985,6 +985,15 @@ export default function App() {
     showToast(`Paid premium of ₹${payload.amount.toLocaleString('en-IN')} for ${insurance.policyName}`, 'success');
   };
 
+  const handleAddFixedInvestment = async (fi: Omit<FixedInvestment, 'id'>) => {
+    await db.fixedInvestments.put({
+      id: `fi-${Date.now()}`,
+      ...fi,
+    });
+    await loadDatabase();
+    triggerAutoSync();
+  };
+
   const handleUpdateFixedInvestment = async (fi: FixedInvestment) => {
     await db.fixedInvestments.put(fi);
     await loadDatabase();

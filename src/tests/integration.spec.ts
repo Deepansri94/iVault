@@ -280,6 +280,7 @@ describe('iVault Pro Full-Flow Integration Tests', () => {
       avgBuyPrice: 3000,
       currentNAV: 3000,
       familyMember: 'Deepan',
+      lastUpdated: new Date().toISOString(),
     });
 
     const stock = await db.dematInvestments.get(stockId);

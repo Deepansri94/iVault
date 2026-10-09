@@ -13,7 +13,7 @@ import type { AppNotification, Budget, FamilyDocument, Loan, Medicine } from '..
  * Options for dispatching a new notification
  */
 export interface DispatchNotificationOptions {
-  type: 'budget' | 'loan' | 'medicine' | 'doc_expiry' | 'birthday' | 'system';
+  type: 'budget' | 'loan' | 'medicine' | 'doc_expiry' | 'birthday' | 'system' | 'insurance';
   title: string;
   message: string;
   severity?: 'warning' | 'info' | 'danger' | 'success';
