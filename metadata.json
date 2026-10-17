@@ -1,0 +1,8 @@
+{
+  "name": "Modular Tracking",
+  "description": "Unified modular ecosystem featuring independent FinTracker, Family Documents, Health & Meds, and Password Vault applications.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "id": "ivault-pro",
+  "name": "iVault Pro - Unified Personal Finance & Family Vault",
+  "short_name": "iVault Pro",
+  "description": "Offline-first personal finance, family documents, medicine tracker, and AES-GCM password vault.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#F4F6F9",
+  "theme_color": "#C93B2B",
+  "categories": [
+    "finance",
+    "productivity",
+    "utilities"
+  ],
+  "icons": [
+    {
+      "src": "./pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "./pwa-maskable-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

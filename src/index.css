@@ -1,0 +1,100 @@
+@import "tailwindcss";
+
+:root {
+  --theme-primary: #C93B2B;
+  --theme-primary-gradient: linear-gradient(135deg, #C93B2B 0%, #A52316 55%, #002D62 100%);
+  --theme-secondary: #002D62;
+  --theme-accent: #F59E0B;
+  --theme-card-bg: #A52316;
+}
+
+.dark {
+  color-scheme: dark;
+}
+
+.dark body {
+  background-color: #0b0f19;
+  color: #f8fafc;
+}
+
+.dark .bg-white,
+.dark .bg-slate-50,
+.dark .bg-\[\#F4F6F9\] {
+  background-color: #111827 !important;
+  color: #f8fafc !important;
+  border-color: #1f2937 !important;
+}
+
+.dark .text-slate-900,
+.dark .text-slate-800,
+.dark .text-slate-700 {
+  color: #f8fafc !important;
+}
+
+.dark .text-slate-500,
+.dark .text-slate-600 {
+  color: #9ca3af !important;
+}
+
+.dark .border-slate-200,
+.dark .border-slate-100 {
+  border-color: #1f2937 !important;
+}
+
+.dark input,
+.dark select,
+.dark textarea {
+  background-color: #1f2937 !important;
+  color: #f8fafc !important;
+  border-color: #374151 !important;
+}
+
+/* Custom scrollbar handling */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes scanBeam {
+  0% {
+    top: 5%;
+    opacity: 0;
+  }
+  15% {
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    top: 95%;
+    opacity: 0;
+  }
+}
+
+.animate-scanBeam {
+  animation: scanBeam 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* Mobile safe area padding */
+.safe-area-inset-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0.75rem);
+}
